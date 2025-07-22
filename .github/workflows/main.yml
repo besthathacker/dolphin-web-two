@@ -11,17 +11,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repository
       - name: Checkout
         uses: actions/checkout@v3
 
-      # Install build dependencies
       - name: Install Dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential cmake ninja-build python3 python3-pip git curl
 
-      # Install Emscripten
       - name: Install Emscripten
         run: |
           git clone https://github.com/emscripten-core/emsdk.git
@@ -29,20 +26,17 @@ jobs:
           chmod +x emsdk
           ./emsdk install latest
           ./emsdk activate latest
-          chmod +x ./emsdk_env.sh
-          echo "source $(pwd)/emsdk_env.sh" >> $GITHUB_ENV
+          source ./emsdk_env.sh
+          echo "PATH=$PATH" >> $GITHUB_ENV
 
-      # Download Dolphin
       - name: Download Dolphin
         run: |
           git clone https://github.com/dolphin-emu/dolphin.git dolphin-src
           cd dolphin-src
           git submodule update --init --recursive
 
-      # Configure Dolphin
       - name: Configure Dolphin
         run: |
-          source ./emsdk/emsdk_env.sh
           cd dolphin-src
           mkdir -p build-web
           cd build-web
@@ -61,14 +55,11 @@ jobs:
             -DARCH_X86_64=OFF \
             -DBASEARCH_X86_FOUND=OFF
 
-      # Build Dolphin
       - name: Build Dolphin
         run: |
-          source ./emsdk/emsdk_env.sh
           cd dolphin-src/build-web
           make -j$(nproc) -i
 
-      # Upload Artifacts
       - name: Upload Build
         uses: actions/upload-artifact@v4
         with:
