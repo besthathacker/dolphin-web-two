@@ -1,0 +1,80 @@
+name: Build Dolphin Web
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      # Step 1: Install dependencies
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build python3 git zip
+
+      # Step 2: Clone Dolphin Emulator
+      - name: Clone Dolphin Emulator
+        run: |
+          git clone https://github.com/dolphin-emu/dolphin.git
+          cd dolphin
+          git submodule update --init --recursive
+
+      # Step 3: Install Emscripten SDK
+      - name: Install Emscripten
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          ./emsdk install latest
+          ./emsdk activate latest
+          echo "source $(pwd)/emsdk_env.sh" >> $GITHUB_ENV
+
+      # Step 4: Configure with CMake
+      - name: Configure Dolphin (Web)
+        run: |
+          source emsdk/emsdk_env.sh
+          cd dolphin
+          mkdir -p build-web
+          cd build-web
+          emcmake cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_GENERIC=ON \
+            -DENABLE_QT=OFF \
+            -DENABLE_ANALYTICS=OFF \
+            -DENABLE_SDL=OFF \
+            -DENABLE_ALSA=OFF \
+            -DENABLE_PULSEAUDIO=OFF \
+            -DENABLE_CUBEB=OFF \
+            -DENABLE_LLVM=OFF \
+            -DENABLE_AUTOUPDATE=OFF \
+            -DENABLE_VULKAN=OFF \
+            -DENABLE_X11=OFF \
+            -DENABLE_EGL=OFF \
+            -DENABLE_HEADLESS=ON \
+            -DZLIB_DONT_USE_X86_FEATURES=ON \
+            -DFMT_CONSTEVAL= \
+            -G Ninja
+
+      # Step 5: Compile Dolphin (stop on first error)
+      - name: Compile Dolphin
+        run: |
+          source emsdk/emsdk_env.sh
+          cd dolphin/build-web
+          cmake --build . --config Release
+
+      # Step 6: Package build into ZIP
+      - name: Package Dolphin Web
+        run: |
+          cd dolphin/build-web/Binaries || mkdir -p dolphin/build-web/Binaries
+          zip -r dolphin-web.zip .
+
+      # Step 7: Upload build artifact
+      - name: Upload Dolphin Web Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dolphin-web
+          path: dolphin/build-web/Binaries/dolphin-web.zip
