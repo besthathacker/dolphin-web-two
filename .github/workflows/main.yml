@@ -54,7 +54,7 @@ jobs:
           source ./emsdk/emsdk_env.sh
           cd dolphin-src
           emcmake cmake . -B build-web -DCMAKE_BUILD_TYPE=Release -DENABLE_GENERIC=ON -DENABLE_QT=OFF
-          cmake --build build-web -j$(nproc)
+          cmake --build build-web -i -j$(nproc)
 
       # Upload artifacts
       - name: Upload Build
