@@ -4,77 +4,71 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  pull_request:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Install dependencies
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build python3 git zip
+      # Step 1: Checkout Repository
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      # Step 2: Clone Dolphin Emulator
-      - name: Clone Dolphin Emulator
+      # Step 2: Install dependencies
+      - name: Install Dependencies
         run: |
-          git clone https://github.com/dolphin-emu/dolphin.git
-          cd dolphin
-          git submodule update --init --recursive
+          sudo apt update
+          sudo apt install -y build-essential cmake ninja-build python3 python3-pip git curl
 
-      # Step 3: Install Emscripten SDK
+      # Step 3: Install Emscripten
       - name: Install Emscripten
         run: |
           git clone https://github.com/emscripten-core/emsdk.git
           cd emsdk
           ./emsdk install latest
           ./emsdk activate latest
-          echo "source $(pwd)/emsdk_env.sh" >> $GITHUB_ENV
+          ./emsdk construct_env
+          ./emsdk_env.sh --shell=sh > em_env.sh
+          cat em_env.sh | grep -E 'export ' | sed 's/^export //' >> $GITHUB_ENV
 
-      # Step 4: Configure with CMake
-      - name: Configure Dolphin (Web)
+      # Step 4: Download Dolphin Emulator
+      - name: Download Dolphin
         run: |
-          source emsdk/emsdk_env.sh
-          cd dolphin
+          git clone https://github.com/dolphin-emu/dolphin.git dolphin-src
+          cd dolphin-src
+          git submodule update --init --recursive
+
+      # Step 5: Configure CMake
+      - name: Configure Dolphin
+        run: |
+          cd dolphin-src
           mkdir -p build-web
           cd build-web
           emcmake cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DENABLE_GENERIC=ON \
             -DENABLE_QT=OFF \
-            -DENABLE_ANALYTICS=OFF \
             -DENABLE_SDL=OFF \
-            -DENABLE_ALSA=OFF \
-            -DENABLE_PULSEAUDIO=OFF \
-            -DENABLE_CUBEB=OFF \
-            -DENABLE_LLVM=OFF \
-            -DENABLE_AUTOUPDATE=OFF \
-            -DENABLE_VULKAN=OFF \
             -DENABLE_X11=OFF \
-            -DENABLE_EGL=OFF \
+            -DENABLE_LTO=OFF \
             -DENABLE_HEADLESS=ON \
+            -DUSE_DISCORD_PRESENCE=OFF \
+            -DUSE_MGBA=OFF \
             -DZLIB_DONT_USE_X86_FEATURES=ON \
-            -DFMT_CONSTEVAL= \
-            -G Ninja
+            -DARCH_X86=OFF \
+            -DARCH_X86_64=OFF \
+            -DBASEARCH_X86_FOUND=OFF
 
-      # Step 5: Compile Dolphin (stop on first error)
-      - name: Compile Dolphin
+      # Step 6: Build Dolphin
+      - name: Build Dolphin
         run: |
-          source emsdk/emsdk_env.sh
-          cd dolphin/build-web
-          cmake --build . --config Release
+          cd dolphin-src/build-web
+          make -j$(nproc) -i
 
-      # Step 6: Package build into ZIP
-      - name: Package Dolphin Web
-        run: |
-          cd dolphin/build-web/Binaries || mkdir -p dolphin/build-web/Binaries
-          zip -r dolphin-web.zip .
-
-      # Step 7: Upload build artifact
-      - name: Upload Dolphin Web Artifact
+      # Step 7: Upload Artifacts
+      - name: Upload Build
         uses: actions/upload-artifact@v4
         with:
           name: dolphin-web
-          path: dolphin/build-web/Binaries/dolphin-web.zip
+          path: dolphin-src/build-web
