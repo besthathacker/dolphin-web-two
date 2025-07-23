@@ -29,9 +29,10 @@ jobs:
 
       - name: Configure CMake for Wii Core
         run: |
+          git clone https://github.com/dolphin-emu/dolphin.git dolphin-src
           mkdir -p build-wii
           cd build-wii
-          emcmake cmake .. \
+          emcmake cmake ../dolphin-src \
             -DCMAKE_BUILD_TYPE=Release \
             -DENABLE_GENERIC=ON \
             -DENABLE_QT=OFF \
@@ -39,9 +40,10 @@ jobs:
             -DENABLE_X11=OFF \
             -DENABLE_VULKAN=OFF \
             -DENABLE_HEADLESS=ON \
-            -DWII_CORE_ONLY=ON \
-            -G Ninja
-
+            -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \
+            -DCMAKE_CROSSCOMPILING_EMULATOR=$GITHUB_WORKSPACE/emsdk/node/22.16.0_64bit/bin/node
+            
       - name: Build Wii Core with Retry
         run: |
           cd build-wii
