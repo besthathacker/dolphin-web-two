@@ -33,8 +33,9 @@ jobs:
       - name: Configure CMake for Wii Core
         run: |
           git clone https://github.com/dolphin-emu/dolphin.git dolphin-src
+          cd dolphin-web-two/dolphin-src
           git submodule update --init --recursive
-          emcmake cmake ../dolphin-src \
+          emcmake cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DENABLE_GENERIC=ON \
             -DENABLE_QT=OFF \
