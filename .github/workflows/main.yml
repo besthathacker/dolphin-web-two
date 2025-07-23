@@ -18,6 +18,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake ninja-build git python3 python3-pip
 
+      - name: git submodule update
+        run: git submodule update --init --recursive
+        
       - name: Install Emscripten SDK
         run: |
           git clone https://github.com/emscripten-core/emsdk.git
@@ -30,7 +33,6 @@ jobs:
       - name: Configure CMake for Wii Core
         run: |
           git clone https://github.com/dolphin-emu/dolphin.git dolphin-src
-          git submodule update --init --recursive
           mkdir -p build-wii
           cd build-wii
           emcmake cmake ../dolphin-src \
